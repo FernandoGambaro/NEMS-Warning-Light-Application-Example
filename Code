@@ -1,0 +1,72 @@
+#!/bin/usr/python3
+import RPi.GPIO as GPIO
+import time
+
+import urllib.request, json 
+
+global verde
+global amarillo
+global rojo
+
+verde =  24
+amarillo = 23
+rojo = 18
+
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(verde, GPIO.OUT, initial = 1 )
+GPIO.setup(amarillo, GPIO.OUT, initial = 1)
+GPIO.setup(rojo, GPIO.OUT, initial = 1)
+
+def estado() -> int:
+    try:
+        with urllib.request.urlopen("http://127.0.0.1/nems-api/hosts?Columns=state") as url:
+            data = json.load(url)
+            for state in data['content']:
+                if state['state'] == 1:
+                    #print('error detectado')
+                    return 1
+                if state['state'] == 2:
+                    #print('advertencia')
+                    return 2
+            return 0
+    except:
+        return 0
+
+def principal():
+    try:
+        while True:
+            result = estado()
+            #print('result')
+            #GPIO.output(rojo, GPIO.LOW)
+            EstadoRojo = GPIO.input(rojo)
+            print(result)
+
+            if result == 1 and GPIO.input(rojo) != GPIO.LOW:
+                print('enciendo rojo')
+                GPIO.output(verde, GPIO.HIGH)
+                GPIO.output(amarillo, GPIO.HIGH)
+                GPIO.output(rojo, GPIO.LOW)
+
+            if result == 2 and GPIO.input(amarillo) != GPIO.LOW:
+                GPIO.output(verde, GPIO.HIGH)
+                GPIO.output(amarillo, GPIO.LOW)
+                GPIO.output(rojo, GPIO.HIGH)
+
+            if result == 0 and GPIO.input(verde) != GPIO.LOW:
+                print('Enciendo verde')
+                GPIO.output(verde, GPIO.LOW)
+                GPIO.output(amarillo, GPIO.HIGH)
+                GPIO.output(rojo, GPIO.HIGH)
+
+            time.sleep(5)
+
+    except KeyboardInterrupt:
+        print("Salir")
+        GPIO.cleanup()
+
+    finally:
+        print("apago")
+        GPIO.cleanup()
+
+if __name__ == '__main__':
+    principal()
